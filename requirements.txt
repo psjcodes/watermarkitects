@@ -1,0 +1,4 @@
+ipykernel
+jupyter
+numpy
+opencv-python
