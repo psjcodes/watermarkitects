@@ -3,3 +3,4 @@ jupyter
 numpy
 opencv-python
 matplotlib
+scipy
