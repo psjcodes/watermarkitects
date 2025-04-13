@@ -3,7 +3,13 @@ import numpy as np
 import hashlib
 import matplotlib.pyplot as plt
 
-def embed_watermark(original_img, signature, strength=0.1):
+def embed_watermark(image, signature):
+    image = np.array(image)
+    image = image[..., ::-1]
+
+    return _embed_watermark(image, signature)
+
+def _embed_watermark(original_img, signature, strength=0.1):
     # Convert to YCbCr and extract Y channel
     img_ycbcr = cv2.cvtColor(original_img, cv2.COLOR_BGR2YCrCb)
     y_channel = img_ycbcr[:, :, 0].astype(np.float32)
@@ -20,11 +26,12 @@ def embed_watermark(original_img, signature, strength=0.1):
         for j in range(0, w, 8):
             block = y_channel[i:i+8, j:j+8]
             dct_block = cv2.dct(block)
-            
+            if dct_block.shape != (8,8):
+                break
             # Select mid-frequency coefficients (example: indices 5-20 in zigzag order)
             mask = np.zeros((8, 8), dtype=bool)
             mask.flat[5:20] = True  # Adjust based on JND thresholds
-            
+
             # Embed watermark into selected coefficients
             dct_block[mask] += strength * watermark[i:i+8, j:j+8][mask]
             
@@ -57,6 +64,9 @@ def detect_multiple_watermarks(test_img, candidate_signatures, strength=0.1, thr
             for j in range(0, w, 8):
                 block = y_channel[i:i+8, j:j+8]
                 dct_block = cv2.dct(block)
+                if dct_block.shape != (8, 8):
+                    break
+
                 mask = np.zeros((8, 8), dtype=bool)
                 mask.flat[5:20] = True
                 selected_coeffs = dct_block[mask]
@@ -95,8 +105,7 @@ def detect_watermark(test_img):
     # Candidate signatures (up to 3)
     candidates = [
         "ChatGPT",
-        "Stable Diffusion",
-        "Midjourney"
+        "Perplexity"
     ]
 
     # Detect watermarks
@@ -107,7 +116,10 @@ def detect_watermark(test_img):
         print(f"Matched Signature Index: {result['best_match_index']}")
         print(f"Matched Signature Text: {candidates[result['best_match_index']]}")
         print(f"Confidence (q-value): {result['best_match_q']:.2f}")
-        
+
+
     print("\nAll Q-values:")
     for idx, q in enumerate(result['all_q_values']):
         print(f"Signature {idx} ({candidates[idx]}): {q:.2f}")
+
+    return {"Watermark Detected": str(result["detected"]), "Generator": candidates[result["best_match_index"]]}
